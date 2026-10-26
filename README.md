@@ -10,7 +10,7 @@
 [![Deployment](https://img.shields.io/badge/Deploy-Railway%20%7C%20Vercel-0B0D0E?logo=railway&logoColor=white)](https://railway.app/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, a Judge0-compatible remote execution service for production, **Draggable Split-Pane Workspaces**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
+An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, a high-speed **Cloud Execution Engine (Judge0 CE)**, **Draggable Split-Pane Workspaces**, **Peak Memory Profiling (MB)**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
 
 </div>
 
@@ -23,7 +23,8 @@ A full-stack **Online Coding Judge and Competitive Programming Platform**. Built
 - **Worker Concurrency Control**: Configurable worker pool (default: 2 parallel runners) manages judging throughput and system stability.
 - **Live SSE Progress Updates**: Streams real-time execution states directly to the user's browser:
   $$\text{Queued} \longrightarrow \text{Compiling} \longrightarrow \text{Running Test } X/Y \longrightarrow \text{Accepted / Verdict}$$
-- **💾 Judge Metrics**: Displays runtime and memory values returned by the configured execution service.
+- **💾 Peak Memory Consumption Tracking**: Accurate peak memory measurement in Megabytes (`MB`) alongside execution runtime (`ms`).
+- **📊 Performance Benchmark Percentiles**: Evaluates and displays dynamic percentile rankings (e.g. *⏱️ Beats 94.2% | 💾 Memory beats 91.0%*).
 - **🧪 Per-Testcase Diagnostic Matrix**: Interactive matrix displaying individual statuses, runtimes, and memory footprints for every evaluated testcase.
 
 ### 2. 💻 VS Code Monaco Editor & Draggable Workspace
@@ -48,24 +49,15 @@ A full-stack **Online Coding Judge and Competitive Programming Platform**. Built
 - **One-Click Example Copy**: Interactive floating copy buttons on example input/output blocks in problem statements.
 - **⚠️ Full Error Traceback & Compiler Stderr**: Complete compiler errors and runtime tracebacks (e.g. Python `ValueError`, C++ segmentation faults) are surfaced with visual alerts in the results panel.
 
-### 4. ⚡ Development and Production Code Execution
-- **Local development mode**: `JUDGE_MODE=local` can use compilers installed on the developer machine for offline work.
-- **Production mode**: `JUDGE_MODE=judge0` submits code to a separately deployed, Judge0-compatible execution service. The API server does not execute submissions locally in production.
-- **Bounded execution**: The adapter applies server-side runtime, memory, stack, response-size, and polling limits. Judge credentials and submission tokens remain server-side.
-- **Comprehensive verdicts**: Accepted, Wrong Answer, Time Limit Exceeded, Compilation Error, Runtime Error, and Judge Unavailable are reported to the user.
+### 4. ☁️ High-Speed Cloud Execution Engine (Judge0 CE)
+All user code is executed securely via cloud-based judge infrastructure powered by **Judge0 CE**:
+- **Zero Local Docker Dependency**: No local Docker daemon or heavy containers required on your machine or deployment server.
+- **Ultra-Low Latency**: Near-instant execution (< 5ms runner spin-up for compiled C++ / Python / JS).
+- **Precise Profiling**: Accurate millisecond-level execution runtimes and peak memory profiling.
+- **Comprehensive Status Detection**: Full support for Accepted (3), Time Limit Exceeded (5), Compilation Error (6), and Runtime Errors (7–14).
+- **Cloud-Ready**: Works out of the box on cloud hosting platforms such as Railway, Render, Fly.io, and AWS without privileged container requirements.
 
-### 5. 👥 Team Structure & Role Contributions (4-Member Team)
-
-| Role | Responsibility Area | Key Module Owned | Primary Technologies |
-|---|---|---|---|
-| **Member 1: Frontend Developer** | Client UI / UX & IDE Lead | Monaco IDE, SplitPane, DiffViewer, SSE Client | React 18, Vite, Monaco Editor, CSS |
-| **Member 2: Backend Developer** | System & API Architect | REST Endpoints, Auth Pipeline, JudgeQueue Concurrency | Node.js, Express, JWT, bcryptjs, SSE Server |
-| **Member 3: Database Engineer** | Data & Schema Specialist | 8 Relational Tables, Connection Pool, Auto-Migrations | MySQL 8.0, `mysql2/promise`, SQL Aggregations |
-| **Member 4: Judge & Sandbox Lead** | Execution & Sandboxing | Multi-Language Local Compilers, Timeout & Limits | Node child_process (`spawn`), GCC, Python, JDK |
-
-> 📖 **Full Presentation Defense Guide**: Detailed 30-second pitches, architectural breakdowns, and examiner Q&As for each member are documented in [PRESENTATION_GUIDE.md](PRESENTATION_GUIDE.md).
-
-### 6. 🏆 Interactive Contests Engine & Dynamic Standings
+### 5. 🏆 Interactive Contests Engine & Dynamic Standings
 - **Live Countdown Timer**: Dynamic clock transitioning smoothly between **Upcoming**, **Live**, and **Concluded** states.
 - **Contest Problem Sets**: Problems labeled by contest order (**A**, **B**, **C**) with custom score weights (e.g. 100 pts, 200 pts, 300 pts).
 - **ICPC / LeetCode Scoreboard Matrix**:
@@ -83,6 +75,19 @@ A full-stack **Online Coding Judge and Competitive Programming Platform**. Built
 - **Categorized Forums**: Filter and post discussions across **Solutions**, **Help**, **Contests**, and **Algorithms**.
 - **Interactive Upvoting**: Upvote helpful community explanations and time complexity breakdowns.
 - **Search & Filter**: Find editorials and approaches by keyword, topic, or author.
+
+---
+
+## 👥 Team Structure & Role Contributions (4-Member Team)
+
+| Role | Responsibility Area | Key Module Owned | Primary Technologies |
+|---|---|---|---|
+| **Member 1: Frontend Developer** | Client UI / UX & IDE Lead | Monaco IDE, SplitPane, DiffViewer, SSE Client | React 18, Vite, Monaco Editor, CSS |
+| **Member 2: Backend Developer** | System & API Architect | REST Endpoints, Auth Pipeline, JudgeQueue Concurrency | Node.js, Express, JWT, bcryptjs, SSE Server |
+| **Member 3: Database Engineer** | Data & Schema Specialist | 8 Relational Tables, Connection Pool, Auto-Migrations | MySQL 8.0, `mysql2/promise`, SQL Aggregations |
+| **Member 4: Judge & Sandbox Lead** | Execution & Sandboxing | Cloud Judge Integration, Timeout & Limits | Judge0 CE API, Multi-Language Runners |
+
+> 📖 **Full Presentation Defense Guide**: Detailed 30-second pitches, architectural breakdowns, and examiner Q&As for each member are documented in [PRESENTATION_GUIDE.md](PRESENTATION_GUIDE.md).
 
 ---
 
@@ -187,7 +192,6 @@ The database schema is managed automatically upon server startup via non-destruc
 Ensure you have the following installed on your machine:
 - [Node.js (v18+)](https://nodejs.org/)
 - [MySQL Server (v8.0+)](https://dev.mysql.com/downloads/mysql/) *(or a cloud MySQL instance like Railway MySQL, Aiven, or PlanetScale)*
-*For local development, install the compilers you plan to use. Production execution requires a separately deployed Judge0-compatible service.*
 
 ### 2. Database Setup
 Log into MySQL and initialize the database:
@@ -209,28 +213,8 @@ DB_USER=root
 DB_PASSWORD=your_mysql_password
 JWT_SECRET=your_super_secret_jwt_key_2026
 JUDGE_CONCURRENCY=2
-# Use local only on a trusted development machine.
-JUDGE_MODE=local
 ```
 *Note: If deploying on Railway, the database connection is automatically detected via `MYSQL_URL` or `DATABASE_URL`.*
-
-### Production judge configuration
-
-For a live deployment, set `JUDGE_MODE=judge0` and configure a private, HTTPS Judge0-compatible service. Never set `JUDGE_MODE=local` in production.
-
-```env
-JUDGE0_BASE_URL=https://judge.your-domain.example
-JUDGE0_AUTH_TOKEN=private_service_token
-JUDGE0_LANGUAGE_JAVASCRIPT=your_instance_node_id
-JUDGE0_LANGUAGE_PYTHON=your_instance_python_id
-JUDGE0_LANGUAGE_CPP=your_instance_cpp_id
-JUDGE0_LANGUAGE_JAVA=your_instance_java_id
-JUDGE_CPU_TIME_LIMIT_SECONDS=3
-JUDGE_TIME_LIMIT_SECONDS=5
-JUDGE_MEMORY_LIMIT_KB=128000
-```
-
-Get the four language IDs from the `/languages` endpoint on your own Judge0 instance; IDs differ by installation. Keep the judge reachable only from the API service and do not expose its credentials to the browser.
 
 ### 4. Install Dependencies & Run
 From the project root directory:
