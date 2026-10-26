@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   status ENUM('queued', 'processing', 'completed', 'failed') DEFAULT 'queued',
   verdict VARCHAR(30) NOT NULL DEFAULT 'Queued',
   runtime_ms INT UNSIGNED NULL,
+  memory_mb INT UNSIGNED NULL,
   passed_test_cases INT UNSIGNED DEFAULT 0,
   total_test_cases INT UNSIGNED DEFAULT 0,
   error_detail TEXT NULL,
@@ -80,6 +81,18 @@ CREATE TABLE IF NOT EXISTS contest_registrations (
   registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_contest_registration (contest_id, user_id),
   FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS discussions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  category VARCHAR(50) NOT NULL DEFAULT 'Solutions',
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  likes INT UNSIGNED DEFAULT 0,
+  replies_count INT UNSIGNED DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

@@ -24,6 +24,18 @@ app.use(cors({
 app.use(express.json());
 
 const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'development_secret', { expiresIn: '2h' });
+const streamTokenFor = (userId, submissionId) => jwt.sign(
+  { id: userId, scope: 'submission:stream', submissionId },
+  process.env.JWT_SECRET || 'development_secret',
+  { expiresIn: '10m' }
+);
+
+const contestState = (contest) => {
+  const startsAt = new Date(contest.starts_at).getTime();
+  const endsAt = startsAt + Number(contest.duration_minutes) * 60 * 1000;
+  if (Date.now() < startsAt) return 'Upcoming';
+  return Date.now() >= endsAt ? 'Finished' : 'Live';
+};
 
 // Auto-migrate schema on server startup
 initDatabase().catch(err => console.warn('[Database] Initial auto-migration notice:', err.message));
@@ -64,6 +76,26 @@ app.get('/api/health', async (_req, res) => {
       concurrency: judgeQueue?.concurrency || 2
     }
   });
+});
+
+app.get('/api/platform-stats', async (_req, res) => {
+  try {
+    const [[stats]] = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM problems) AS problems,
+        (SELECT COUNT(*) FROM users) AS users,
+        (SELECT COUNT(*) FROM submissions) AS submissions,
+        (SELECT COUNT(*) FROM contests) AS contests
+    `);
+    res.json({
+      problems: Number(stats.problems || 0),
+      users: Number(stats.users || 0),
+      submissions: Number(stats.submissions || 0),
+      contests: Number(stats.contests || 0)
+    });
+  } catch {
+    res.status(500).json({ message: 'Failed to load platform statistics.' });
+  }
 });
 
 app.post('/api/auth/register', async (req, res) => {
@@ -112,7 +144,7 @@ app.get('/api/problems/:slug', async (req, res) => {
     let samples = [];
     try {
       const [tc] = await pool.execute(
-        'SELECT input_data, expected_output FROM test_cases WHERE problem_id = ? ORDER BY id',
+        'SELECT input_data, expected_output FROM test_cases WHERE problem_id = ? AND is_sample = TRUE ORDER BY id',
         [rows[0].id]
       );
       samples = tc;
@@ -129,7 +161,7 @@ app.get('/api/problems/:slug', async (req, res) => {
 // Asynchronous Submission Ingestion
 app.post('/api/submissions', authenticate, async (req, res) => {
   const { problemId, language, sourceCode, contestId } = req.body;
-  if (!problemId || !language || !sourceCode) {
+  if (!problemId || !language || typeof sourceCode !== 'string' || !sourceCode) {
     return res.status(400).json({ message: 'Problem, language and code are required.' });
   }
   if (!supportedLanguages.includes(language)) {
@@ -137,6 +169,34 @@ app.post('/api/submissions', authenticate, async (req, res) => {
   }
   if (sourceCode.length > 30000) {
     return res.status(400).json({ message: 'Source code must be below 30 KB.' });
+  }
+
+  const cid = contestId == null || contestId === '' ? null : Number(contestId);
+  if (cid !== null && (!Number.isInteger(cid) || cid <= 0)) {
+    return res.status(400).json({ message: 'Contest ID must be a positive integer.' });
+  }
+  if (cid !== null) {
+    try {
+      const [contests] = await pool.execute(
+        `SELECT c.id, c.starts_at, c.duration_minutes
+         FROM contests c
+         JOIN contest_registrations cr ON cr.contest_id = c.id
+         WHERE c.id = ? AND cr.user_id = ?`,
+        [cid, req.user.id]
+      );
+      if (!contests[0]) return res.status(403).json({ message: 'Register for this contest before submitting.' });
+      if (contestState(contests[0]) !== 'Live') {
+        return res.status(409).json({ message: 'Contest submissions are allowed only while the contest is live.' });
+      }
+      const [contestProblems] = await pool.execute(
+        'SELECT id FROM contest_problems WHERE contest_id = ? AND problem_id = ? LIMIT 1',
+        [cid, problemId]
+      );
+      if (!contestProblems[0]) return res.status(400).json({ message: 'This problem is not part of the selected contest.' });
+    } catch (error) {
+      console.error('Contest submission validation failed:', error);
+      return res.status(500).json({ message: 'Unable to validate the contest submission.' });
+    }
   }
 
   let tests = [];
@@ -157,7 +217,6 @@ app.post('/api/submissions', authenticate, async (req, res) => {
   try {
     // 1. Insert queued record into database
     let submissionId;
-    const cid = contestId ? Number(contestId) : null;
     try {
       const [result] = await pool.execute(
         'INSERT INTO submissions (user_id, problem_id, contest_id, language, source_code, status, verdict, total_test_cases) VALUES (?, ?, ?, ?, ?, "queued", "Queued", ?)',
@@ -165,6 +224,7 @@ app.post('/api/submissions', authenticate, async (req, res) => {
       );
       submissionId = result.insertId;
     } catch (insertErr) {
+      if (cid !== null) throw insertErr;
       // Fallback for legacy submissions table
       const [result] = await pool.execute(
         'INSERT INTO submissions (user_id, problem_id, language, source_code, verdict) VALUES (?, ?, ?, ?, "Queued")',
@@ -189,6 +249,7 @@ app.post('/api/submissions', authenticate, async (req, res) => {
       verdict: 'Queued',
       position: queuedJob.position,
       totalTestCases: tests.length,
+      streamToken: streamTokenFor(req.user.id, submissionId),
       message: 'Submission received and queued for judging.'
     });
   } catch (e) {
@@ -201,6 +262,16 @@ app.post('/api/submissions', authenticate, async (req, res) => {
 app.get('/api/submissions/:id/stream', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).end();
+
+  try {
+    const token = String(req.query.token || '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'development_secret');
+    if (decoded.scope !== 'submission:stream' || Number(decoded.submissionId) !== id) {
+      return res.status(403).end();
+    }
+  } catch {
+    return res.status(401).end();
+  }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -244,17 +315,19 @@ app.get('/api/submissions/:id/stream', async (req, res) => {
 });
 
 // Polling / Status lookup endpoint for submission
-app.get('/api/submissions/:id', async (req, res) => {
+app.get('/api/submissions/:id', authenticate, async (req, res) => {
   const id = Number(req.params.id);
-  const memory = judgeQueue.getStatus(id);
-  if (memory) return res.json(memory);
-
   try {
     const [rows] = await pool.execute(
-      'SELECT s.id, s.user_id, s.problem_id, p.title as problem_title, s.language, s.verdict, s.runtime_ms, s.created_at FROM submissions s JOIN problems p ON p.id = s.problem_id WHERE s.id = ?',
-      [id]
+      `SELECT s.id, s.user_id, s.problem_id, p.title as problem_title, s.language, s.status, s.verdict,
+              s.runtime_ms, s.memory_mb, s.passed_test_cases, s.total_test_cases, s.error_detail, s.created_at
+       FROM submissions s JOIN problems p ON p.id = s.problem_id
+       WHERE s.id = ? AND s.user_id = ?`,
+      [id, req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ message: 'Submission not found.' });
+    const memory = judgeQueue.getStatus(id);
+    if (memory) return res.json(memory);
     res.json(rows[0]);
   } catch (e) {
     res.status(500).json({ message: 'Failed to fetch submission.' });
@@ -262,13 +335,19 @@ app.get('/api/submissions/:id', async (req, res) => {
 });
 
 // Custom Test Runner ("Run Code" without recording submission)
-app.post('/api/judge/run', async (req, res) => {
+app.post('/api/judge/run', authenticate, async (req, res) => {
   const { language, sourceCode, customInput } = req.body;
-  if (!language || !sourceCode) {
+  if (!language || typeof sourceCode !== 'string' || !sourceCode) {
     return res.status(400).json({ message: 'Language and source code are required.' });
   }
   if (!supportedLanguages.includes(language)) {
     return res.status(400).json({ message: `Choose one of: ${supportedLanguages.join(', ')}.` });
+  }
+  if (sourceCode.length > 30000) {
+    return res.status(400).json({ message: 'Source code must be below 30 KB.' });
+  }
+  if (customInput != null && (typeof customInput !== 'string' || customInput.length > 10000)) {
+    return res.status(400).json({ message: 'Custom input must be plain text below 10 KB.' });
   }
 
   try {
@@ -284,7 +363,10 @@ app.post('/api/judge/run', async (req, res) => {
 app.get('/api/submissions/me', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.created_at FROM submissions s JOIN problems p ON p.id = s.problem_id WHERE s.user_id = ? ORDER BY s.created_at DESC',
+      `SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.memory_mb,
+              s.passed_test_cases, s.total_test_cases, s.created_at
+       FROM submissions s JOIN problems p ON p.id = s.problem_id
+       WHERE s.user_id = ? ORDER BY s.created_at DESC`,
       [req.user.id]
     );
     res.json(rows);
@@ -556,6 +638,17 @@ async function fetchUserProfile(userId, res) {
   const totalAccepted = Number(subStats[0]?.total_accepted || 0);
   const acceptanceRate = totalSubmissions > 0 ? Math.round((totalAccepted / totalSubmissions) * 100) : 0;
 
+  const [rankRows] = await pool.query(`
+    SELECT u.id,
+           COUNT(DISTINCT CASE WHEN s.verdict = 'Accepted' THEN s.problem_id END) AS solved,
+           COALESCE(SUM(CASE WHEN s.verdict = 'Accepted' THEN 100 ELSE 0 END), 0) AS score
+    FROM users u
+    LEFT JOIN submissions s ON s.user_id = u.id
+    GROUP BY u.id
+    ORDER BY score DESC, solved DESC, u.id ASC
+  `);
+  const rank = rankRows.findIndex((row) => Number(row.id) === Number(user.id)) + 1;
+
   // 365-day submission heatmap activity
   const [activityRows] = await pool.execute(
     `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count 
@@ -590,7 +683,8 @@ async function fetchUserProfile(userId, res) {
       totalSubmissions,
       totalAccepted,
       acceptanceRate,
-      score: solved.Total * 100
+      score: solved.Total * 100,
+      rank: rank || null
     },
     activity: activityRows,
     recentSubmissions
@@ -629,7 +723,7 @@ app.get('/api/users/:username/profile', async (req, res) => {
 });
 
 // View exact submission source code
-app.get('/api/submissions/:id/code', async (req, res) => {
+app.get('/api/submissions/:id/code', authenticate, async (req, res) => {
   const id = Number(req.params.id);
   try {
     const [rows] = await pool.execute(
@@ -637,8 +731,8 @@ app.get('/api/submissions/:id/code', async (req, res) => {
        FROM submissions s 
        JOIN problems p ON p.id = s.problem_id 
        JOIN users u ON u.id = s.user_id 
-       WHERE s.id = ? LIMIT 1`,
-      [id]
+        WHERE s.id = ? AND s.user_id = ? LIMIT 1`,
+       [id, req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ message: 'Submission not found.' });
     res.json(rows[0]);

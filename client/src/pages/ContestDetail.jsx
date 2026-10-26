@@ -119,7 +119,7 @@ export function ContestDetail() {
         <div className="problem-list">
           {contest.problems && contest.problems.length ? (
             contest.problems.map((p) => (
-              <Link to={`/problems/${p.slug}`} className="problem-card contest-prob-card" key={p.id}>
+              <Link to={`/problems/${p.slug}?contest=${encodeURIComponent(contest.id)}`} className="problem-card contest-prob-card" key={p.id}>
                 <span className="contest-letter-badge">{p.letter_order}</span>
                 <div className={`difficulty ${difficultyClass(p.difficulty)}`}>{p.difficulty}</div>
                 <div className="problem-main">

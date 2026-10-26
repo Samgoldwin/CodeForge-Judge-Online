@@ -2,7 +2,7 @@
   "name": "codeforge-api",
   "version": "1.0.0",
   "type": "module",
-  "scripts": { "dev": "nodemon src/index.js", "start": "node src/index.js" },
+  "scripts": { "dev": "nodemon src/index.js", "start": "node src/index.js", "test": "node --test" },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

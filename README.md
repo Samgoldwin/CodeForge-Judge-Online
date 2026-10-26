@@ -10,7 +10,7 @@
 [![Deployment](https://img.shields.io/badge/Deploy-Railway%20%7C%20Vercel-0B0D0E?logo=railway&logoColor=white)](https://railway.app/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, a high-speed **Cloud Execution Engine (Judge0 CE)**, **Draggable Split-Pane Workspaces**, **Peak Memory Profiling (MB)**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
+A full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, a Judge0-compatible remote execution service for production, **Draggable Split-Pane Workspaces**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
 
 </div>
 
@@ -23,8 +23,7 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 - **Worker Concurrency Control**: Configurable worker pool (default: 2 parallel runners) manages judging throughput and system stability.
 - **Live SSE Progress Updates**: Streams real-time execution states directly to the user's browser:
   $$\text{Queued} \longrightarrow \text{Compiling} \longrightarrow \text{Running Test } X/Y \longrightarrow \text{Accepted / Verdict}$$
-- **💾 Peak Memory Consumption Tracking**: Accurate peak memory measurement in Megabytes (`MB`) alongside execution runtime (`ms`).
-- **📊 Performance Benchmark Percentiles**: Evaluates and displays dynamic percentile rankings (e.g. *⏱️ Beats 94.2% | 💾 Memory beats 91.0%*).
+- **💾 Judge Metrics**: Displays runtime and memory values returned by the configured execution service.
 - **🧪 Per-Testcase Diagnostic Matrix**: Interactive matrix displaying individual statuses, runtimes, and memory footprints for every evaluated testcase.
 
 ### 2. 💻 VS Code Monaco Editor & Draggable Workspace
@@ -49,13 +48,11 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 - **One-Click Example Copy**: Interactive floating copy buttons on example input/output blocks in problem statements.
 - **⚠️ Full Error Traceback & Compiler Stderr**: Complete compiler errors and runtime tracebacks (e.g. Python `ValueError`, C++ segmentation faults) are surfaced with visual alerts in the results panel.
 
-### 4. ⚡ 100% Offline Local & Cloud Code Execution Engine
-Code execution is powered by a high-performance local process sandbox with zero internet or Docker requirements:
-- **100% Offline Capable**: Runs completely locally using the host machine's installed compilers (`node`, `python`, `g++`, `javac`). Zero external API calls or network dependencies during classroom/offline presentations.
-- **Zero Docker Overhead**: Spawns isolated ephemeral execution sub-processes with automated cleanup in OS temporary directories.
-- **Ultra-Low Latency**: Sub-millisecond runner overhead and native compiler performance.
-- **Precise Profiling**: High-resolution execution runtimes measured via `performance.now()` alongside peak memory footprints.
-- **Comprehensive Status Detection**: Full support for Accepted, Wrong Answer, Time Limit Exceeded (5-second timeout), Compilation Error (with compiler stderr), and Runtime Errors (with stack traces).
+### 4. ⚡ Development and Production Code Execution
+- **Local development mode**: `JUDGE_MODE=local` can use compilers installed on the developer machine for offline work.
+- **Production mode**: `JUDGE_MODE=judge0` submits code to a separately deployed, Judge0-compatible execution service. The API server does not execute submissions locally in production.
+- **Bounded execution**: The adapter applies server-side runtime, memory, stack, response-size, and polling limits. Judge credentials and submission tokens remain server-side.
+- **Comprehensive verdicts**: Accepted, Wrong Answer, Time Limit Exceeded, Compilation Error, Runtime Error, and Judge Unavailable are reported to the user.
 
 ### 5. 👥 Team Structure & Role Contributions (4-Member Team)
 
@@ -190,7 +187,7 @@ The database schema is managed automatically upon server startup via non-destruc
 Ensure you have the following installed on your machine:
 - [Node.js (v18+)](https://nodejs.org/)
 - [MySQL Server (v8.0+)](https://dev.mysql.com/downloads/mysql/) *(or a cloud MySQL instance like Railway MySQL, Aiven, or PlanetScale)*
-*(Note: Docker is **not required** — code execution is handled natively by the cloud judge engine).*
+*For local development, install the compilers you plan to use. Production execution requires a separately deployed Judge0-compatible service.*
 
 ### 2. Database Setup
 Log into MySQL and initialize the database:
@@ -212,8 +209,28 @@ DB_USER=root
 DB_PASSWORD=your_mysql_password
 JWT_SECRET=your_super_secret_jwt_key_2026
 JUDGE_CONCURRENCY=2
+# Use local only on a trusted development machine.
+JUDGE_MODE=local
 ```
 *Note: If deploying on Railway, the database connection is automatically detected via `MYSQL_URL` or `DATABASE_URL`.*
+
+### Production judge configuration
+
+For a live deployment, set `JUDGE_MODE=judge0` and configure a private, HTTPS Judge0-compatible service. Never set `JUDGE_MODE=local` in production.
+
+```env
+JUDGE0_BASE_URL=https://judge.your-domain.example
+JUDGE0_AUTH_TOKEN=private_service_token
+JUDGE0_LANGUAGE_JAVASCRIPT=your_instance_node_id
+JUDGE0_LANGUAGE_PYTHON=your_instance_python_id
+JUDGE0_LANGUAGE_CPP=your_instance_cpp_id
+JUDGE0_LANGUAGE_JAVA=your_instance_java_id
+JUDGE_CPU_TIME_LIMIT_SECONDS=3
+JUDGE_TIME_LIMIT_SECONDS=5
+JUDGE_MEMORY_LIMIT_KB=128000
+```
+
+Get the four language IDs from the `/languages` endpoint on your own Judge0 instance; IDs differ by installation. Keep the judge reachable only from the API service and do not expose its credentials to the browser.
 
 ### 4. Install Dependencies & Run
 From the project root directory:

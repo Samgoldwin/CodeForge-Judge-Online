@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Copy, Check, Sparkles } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,9 @@ const difficultyClass = (d) => (d ? d.toLowerCase() : 'easy');
 
 export function ProblemWorkspace() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const contestId = searchParams.get('contest');
 
   const [problem, setProblem] = useState(null);
   const [language, setLanguage] = useState('JavaScript');
@@ -85,6 +87,16 @@ export function ProblemWorkspace() {
 
   // Run Code against Active Testcase Input
   const handleRunCode = async () => {
+    if (!user) {
+      setActiveTab('results');
+      setJudgeState({
+        status: 'failed',
+        message: 'Please log in before running code.',
+        verdict: 'Auth Required'
+      });
+      return;
+    }
+
     const activeInput = testCases && testCases.length > 0 ? testCases[currentCaseIdx] : customInput;
 
     setActiveTab('results');
@@ -168,7 +180,8 @@ export function ProblemWorkspace() {
       const { data } = await api.post('/submissions', {
         problemId: problem.id,
         language,
-        sourceCode: code
+        sourceCode: code,
+        ...(contestId ? { contestId } : {})
       });
 
       const submissionId = data.id;
@@ -181,7 +194,7 @@ export function ProblemWorkspace() {
 
       // Connect to real-time Server-Sent Events (SSE) stream
       const baseURL = api.defaults.baseURL || 'http://localhost:5000/api';
-      const es = new EventSource(`${baseURL}/submissions/${submissionId}/stream`);
+      const es = new EventSource(`${baseURL}/submissions/${submissionId}/stream?token=${encodeURIComponent(data.streamToken)}`);
       eventSourceRef.current = es;
 
       es.addEventListener('progress', (e) => {
@@ -267,9 +280,10 @@ export function ProblemWorkspace() {
   // Left Pane Component (Problem Statement)
   const statementPane = (
     <article className="statement">
-      <Link className="back" to="/problems">
-        ← All problems
+      <Link className="back" to={contestId ? `/contests/${encodeURIComponent(contestId)}` : '/problems'}>
+        {contestId ? '← Back to contest' : '← All problems'}
       </Link>
+      {contestId && <p className="eyebrow">CONTEST MODE · CONTEST #{contestId}</p>}
       <div className={`difficulty ${difficultyClass(problem.difficulty)}`}>
         {problem.difficulty}
       </div>

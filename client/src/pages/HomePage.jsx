@@ -7,9 +7,11 @@ const difficultyClass = (d) => (d ? d.toLowerCase() : 'easy');
 
 export function HomePage() {
   const [items, setItems] = useState([]);
+  const [platformStats, setPlatformStats] = useState(null);
 
   useEffect(() => {
     api.get('/problems').then((r) => setItems(r.data)).catch(() => {});
+    api.get('/platform-stats').then((r) => setPlatformStats(r.data)).catch(() => setPlatformStats(null));
   }, []);
 
   return (
@@ -40,10 +42,10 @@ export function HomePage() {
       </section>
 
       <section className="metrics">
-        <div><b>{items.length || 4}+</b><span>Problems</span></div>
-        <div><b>1,200+</b><span>Active Coders</span></div>
-        <div><b>45,000+</b><span>Submissions Judged</span></div>
-        <div><b>36</b><span>Contests Hosted</span></div>
+        <div><b>{platformStats?.problems ?? items.length}</b><span>Problems</span></div>
+        <div><b>{platformStats?.users ?? '—'}</b><span>Registered Coders</span></div>
+        <div><b>{platformStats?.submissions ?? '—'}</b><span>Submissions Judged</span></div>
+        <div><b>{platformStats?.contests ?? '—'}</b><span>Contests Hosted</span></div>
       </section>
 
       <section className="why">

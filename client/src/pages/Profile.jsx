@@ -171,7 +171,7 @@ export function Profile() {
             </div>
             <div className="metric-box">
               <span>Community Rank</span>
-              <b>Top 10%</b>
+              <b>{stats.rank ? `#${stats.rank}` : '—'}</b>
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ export function Profile() {
         <div className="section-title" style={{ marginBottom: '16px' }}>
           <div>
             <h3>Recent Submissions</h3>
-            <p className="muted">Click any submission to inspect your saved code.</p>
+            <p className="muted">{isOwnProfile ? 'Click any submission to inspect your saved code.' : 'Recent submission results are visible to the community.'}</p>
           </div>
         </div>
 
@@ -193,9 +193,9 @@ export function Profile() {
           <div className="table">
             {recentSubmissions.map((s) => (
               <div
-                className="table-row sub-row-clickable"
+                className={`table-row ${isOwnProfile ? 'sub-row-clickable' : ''}`}
                 key={s.id}
-                onClick={() => setSelectedSubId(s.id)}
+                onClick={isOwnProfile ? () => setSelectedSubId(s.id) : undefined}
               >
                 <div className={`difficulty ${difficultyClass(s.difficulty)}`}>{s.difficulty}</div>
                 <div className="sub-col-title">
@@ -209,9 +209,11 @@ export function Profile() {
                   {s.runtime_ms ? `${s.runtime_ms} ms` : '-'}
                 </div>
                 <div className="sub-action">
-                  <button className="button small ghost-btn">
-                    <FileCode size={14} /> View Code
-                  </button>
+                  {isOwnProfile && (
+                    <button className="button small ghost-btn">
+                      <FileCode size={14} /> View Code
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

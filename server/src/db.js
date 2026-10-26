@@ -161,6 +161,14 @@ export async function initDatabase() {
       )
     `);
 
+    // Keep older databases compatible with the submission metrics shown by the UI.
+    const [submissionMemoryColumn] = await pool.query(
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'submissions' AND COLUMN_NAME = 'memory_mb'"
+    );
+    if (submissionMemoryColumn.length === 0) {
+      await pool.query('ALTER TABLE submissions ADD COLUMN memory_mb INT UNSIGNED NULL AFTER runtime_ms');
+    }
+
     // 6. Create contest_problems table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contest_problems (
