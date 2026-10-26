@@ -451,14 +451,21 @@ nav a:hover { color: var(--accent); }
 .diff-status-pill.mismatch { background: #3d1b1b; color: #ff8c8c; border: 1px solid #6b2828; }
 .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .diff-box { background: #111; border: 1px solid #282828; border-radius: 6px; overflow: hidden; }
+.diff-box.expected-box { border-color: #1e5a3a; }
+.diff-box.actual-match { border-color: #1e5a3a; }
+.diff-box.actual-mismatch { border-color: #6b2828; }
 .diff-box-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #1a1a1a; border-bottom: 1px solid #262626; font-size: 11px; font-weight: 700; }
 .expected-title { color: #5ee59f; }
 .actual-title { color: #ff8c8c; }
+.actual-title-match { color: #5ee59f; }
+.actual-title-mismatch { color: #ff8c8c; }
 .diff-copy-btn { display: inline-flex; align-items: center; gap: 4px; background: transparent; border: 0; color: #888; font-size: 11px; cursor: pointer; }
 .diff-copy-btn:hover { color: #fff; }
 .diff-pre { margin: 0; padding: 8px 10px; font: 12px 'DM Mono'; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
 .expected-pre { color: #7cf2b4; }
 .actual-pre { color: #ffa8a8; }
+.actual-pre-match { color: #7cf2b4; }
+.actual-pre-mismatch { color: #ffa8a8; }
 
 
 /* Results & Verdict Cards */

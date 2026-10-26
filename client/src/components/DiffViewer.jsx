@@ -47,9 +47,11 @@ export function DiffViewer({ expected, actual }) {
         </div>
 
         {/* Actual Output Box */}
-        <div className="diff-box actual-box">
+        <div className={`diff-box actual-box ${isMatch ? 'actual-match' : 'actual-mismatch'}`}>
           <div className="diff-box-header">
-            <span className="diff-title actual-title">Your Output</span>
+            <span className={`diff-title ${isMatch ? 'actual-title-match' : 'actual-title-mismatch'}`}>
+              Your Output
+            </span>
             <button
               className="diff-copy-btn"
               onClick={() => copyText(actual, false)}
@@ -59,7 +61,9 @@ export function DiffViewer({ expected, actual }) {
               {copiedActual ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <pre className="diff-pre actual-pre">{actual || '(empty / no output)'}</pre>
+          <pre className={`diff-pre ${isMatch ? 'actual-pre-match' : 'actual-pre-mismatch'}`}>
+            {actual || '(empty / no output)'}
+          </pre>
         </div>
       </div>
     </div>
