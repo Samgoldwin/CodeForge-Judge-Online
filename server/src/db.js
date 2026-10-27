@@ -61,13 +61,12 @@ export async function initDatabase() {
     const [probCount] = await pool.query('SELECT COUNT(*) as count FROM problems');
     if (probCount[0].count === 0) {
       console.log('[Database] Seeding default problems...');
-      const values = PROBLEMS.map((p) =>
-        `('${p.slug}', '${p.title.replace(/'/g, "\\'"})', '${p.difficulty}', '${p.tags.replace(/'/g, "\\'"})', '${p.description.replace(/'/g, "\\'"})', '${p.input_format.replace(/'/g, "\\'"})', '${p.output_format.replace(/'/g, "\\'"})', '${p.example_input.replace(/'/g, "\\'"})', '${p.example_output.replace(/'/g, "\\'"})', ${Number(p.solved_count || 0)})`
-      ).join(',\n');
-      await pool.query(`
-        INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES
-        ${values}
-      `);
+      for (const p of PROBLEMS) {
+        await pool.execute(
+          'INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [p.slug, p.title, p.difficulty, p.tags, p.description, p.input_format || '', p.output_format || '', p.example_input || '', p.example_output || '', Number(p.solved_count || 0)]
+        );
+      }
     }
 
     // 3. Create test_cases table
@@ -97,21 +96,15 @@ export async function initDatabase() {
       console.log('[Database] Auto-seeding test cases for default problems...');
       const [problems] = await pool.query('SELECT id, slug FROM problems');
       const problemBySlug = new Map(problems.map((p) => [p.slug, p.id]));
-      const tcValues = [];
       for (const p of PROBLEMS) {
         const problemId = problemBySlug.get(p.slug);
         if (!problemId) continue;
         for (const tc of (p.test_cases || [])) {
-          tcValues.push(
-            `(${problemId}, '${tc.input_data.replace(/'/g, "\\'"})', '${tc.expected_output.replace(/'/g, "\\'"})', ${tc.is_sample ? 'TRUE' : 'FALSE'})`
+          await pool.execute(
+            'INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES (?, ?, ?, ?)',
+            [problemId, tc.input_data, tc.expected_output, Boolean(tc.is_sample)]
           );
         }
-      }
-      if (tcValues.length) {
-        await pool.query(`
-          INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES
-          ${tcValues.join(',\n')}
-        `);
       }
     }
 
