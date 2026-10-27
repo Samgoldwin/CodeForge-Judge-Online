@@ -425,6 +425,21 @@ app.get('/api/submissions/:id/stream', async (req, res) => {
   judgeQueue.subscribe(id, res);
 });
 
+app.get('/api/submissions/me', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.memory_mb,
+              s.passed_test_cases, s.total_test_cases, s.created_at
+       FROM submissions s JOIN problems p ON p.id = s.problem_id
+       WHERE s.user_id = ? ORDER BY s.created_at DESC`,
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to load user submissions.' });
+  }
+});
+
 // Polling / Status lookup endpoint for submission
 app.get('/api/submissions/:id', authenticate, async (req, res) => {
   const id = Number(req.params.id);
@@ -468,21 +483,6 @@ app.post('/api/judge/run', authenticate, async (req, res) => {
     res.status(error.code === 'JUDGE_UNAVAILABLE' ? 503 : 500).json({
       message: error.message || 'Run execution failed.'
     });
-  }
-});
-
-app.get('/api/submissions/me', authenticate, async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.memory_mb,
-              s.passed_test_cases, s.total_test_cases, s.created_at
-       FROM submissions s JOIN problems p ON p.id = s.problem_id
-       WHERE s.user_id = ? ORDER BY s.created_at DESC`,
-      [req.user.id]
-    );
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ message: 'Failed to load user submissions.' });
   }
 });
 
