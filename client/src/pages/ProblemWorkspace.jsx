@@ -380,7 +380,7 @@ export function ProblemWorkspace() {
         initialRatio={45}
         minRatio={25}
         maxRatio={75}
-        storageKey="codeforge_workspace_hratio"
+        storageKey="CodeTest_workspace_hratio"
         left={statementPane}
         right={
           <div className="editor-pane-vertical-wrap">
@@ -388,7 +388,7 @@ export function ProblemWorkspace() {
               initialRatio={58}
               minRatio={25}
               maxRatio={80}
-              storageKey="codeforge_workspace_vratio"
+              storageKey="CodeTest_workspace_vratio"
               top={topEditorPane}
               bottom={bottomTestPane}
             />

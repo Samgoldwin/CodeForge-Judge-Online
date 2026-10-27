@@ -192,7 +192,7 @@ export function CodeEditor({
   // Load saved draft on problem or language change
   useEffect(() => {
     if (!problemSlug) return;
-    const storageKey = `codeforge_draft_${problemSlug}_${language}`;
+    const storageKey = `CodeTest_draft_${problemSlug}_${language}`;
     const savedDraft = localStorage.getItem(storageKey);
     if (savedDraft) {
       onChange(savedDraft);
@@ -204,7 +204,7 @@ export function CodeEditor({
   const handleCodeChange = (newCode) => {
     onChange(newCode || '');
     if (problemSlug) {
-      localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, newCode || '');
+      localStorage.setItem(`CodeTest_draft_${problemSlug}_${language}`, newCode || '');
     }
   };
 
@@ -218,7 +218,7 @@ export function CodeEditor({
     }
     onChange(template);
     if (problemSlug) {
-      localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, template);
+      localStorage.setItem(`CodeTest_draft_${problemSlug}_${language}`, template);
     }
     setResetFeedback(true);
     setTimeout(() => setResetFeedback(false), 1200);
@@ -240,7 +240,7 @@ export function CodeEditor({
       editorRef.current.setValue(formatted);
       onChange(formatted);
       if (problemSlug) {
-        localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, formatted);
+        localStorage.setItem(`CodeTest_draft_${problemSlug}_${language}`, formatted);
       }
     }
 

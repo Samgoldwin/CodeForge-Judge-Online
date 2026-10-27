@@ -1,4 +1,4 @@
-USE codeforge;
+USE CodeTest;
 
 DELETE FROM test_cases;
 DELETE FROM contest_problems;

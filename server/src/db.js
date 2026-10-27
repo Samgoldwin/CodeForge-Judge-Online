@@ -14,7 +14,7 @@ export const pool = mysql.createPool(
     port: Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
     user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
     password: process.env.MYSQLPASSWORD ?? process.env.DB_PASSWORD ?? '',
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'codeforge',
+    database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'CodeTest',
     waitForConnections: true,
     connectionLimit: 10,
     connectTimeout: 15000,
@@ -230,7 +230,7 @@ export async function initDatabase() {
     if (existingUsers[0].count === 0) {
       await pool.query(`
         INSERT INTO users (name, username, email, password_hash) VALUES
-        ('CodeForge Admin', 'admin', 'admin@codeforge.dev', '$2a$10$wO082w1v2gUf7UomJk582OB2B1B6F64gK.aP9mR5O3C/e0fFfJgXW');
+        ('CodeTest Admin', 'admin', 'admin@CodeTest.dev', '$2a$10$wO082w1v2gUf7UomJk582OB2B1B6F64gK.aP9mR5O3C/e0fFfJgXW');
       `).catch(() => {});
     }
 

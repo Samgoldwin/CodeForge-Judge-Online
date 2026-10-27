@@ -1,4 +1,4 @@
-# 🎓 CodeForge — 4-Member Team Presentation & Defense Guide
+# 🎓 CodeTest — 4-Member Team Presentation & Defense Guide
 
 This document provides each team member with their exact **30-Second Introduction Pitch**, **File Ownership**, **Technical Architecture**, and the **Top Q&A** to defend the project during the presentation.
 
@@ -131,7 +131,7 @@ This document provides each team member with their exact **30-Second Introductio
      - **Java**: Compiles with `javac Main.java`, checks exit code, then executes `java -Xmx256m Main`.
      - **JavaScript**: Spawns `node solution.js`.
 2. **Ephemeral Isolated Workspaces**:
-   - For every execution, generates a unique temporary directory in `os.tmpdir()` (e.g., `codeforge_1741635849_ab3x9`). Writes source files, compiles, runs against stdin, and guarantees total folder deletion inside a `finally` block.
+   - For every execution, generates a unique temporary directory in `os.tmpdir()` (e.g., `CodeTest_1741635849_ab3x9`). Writes source files, compiles, runs against stdin, and guarantees total folder deletion inside a `finally` block.
 3. **Verdict Classification Logic**:
    - `Timed Out (5000ms)` $\longrightarrow$ **Time Limit Exceeded (TLE)**
    - `compileRes.code !== 0` $\longrightarrow$ **Compilation Error** (extracts compiler stderr)

@@ -42,7 +42,7 @@ export function Auth({ register }) {
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={handleSubmit}>
         <Link className="brand centered" to="/">
-          <span><Code2 size={23} /></span>CodeForge
+          <span><Code2 size={23} /></span>CodeTest
         </Link>
         <h1>{register ? 'Create your account' : 'Welcome back'}</h1>
         <p className="muted">
@@ -105,7 +105,7 @@ export function Auth({ register }) {
         </button>
 
         <p className="switch">
-          {register ? 'Already have an account?' : 'New to CodeForge?'}{' '}
+          {register ? 'Already have an account?' : 'New to CodeTest?'}{' '}
           <Link to={register ? '/login' : '/register'}>
             {register ? 'Log in' : 'Create one'}
           </Link>

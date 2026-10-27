@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ CodeForge — Online Coding Judge & Competitive Platform
+# ⚡ CodeTest — Online Coding Judge & Competitive Platform
 
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -208,7 +208,7 @@ PORT=5000
 CLIENT_URL=http://localhost:5173
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_NAME=codeforge
+DB_NAME=CodeTest
 DB_USER=root
 DB_PASSWORD=your_mysql_password
 JWT_SECRET=your_super_secret_jwt_key_2026
@@ -265,7 +265,7 @@ npm run dev
 ## 📁 Repository Structure
 
 ```text
-CodeForge/
+CodeTest/
 ├── client/                      # React 18 + Vite Frontend
 │   ├── src/
 │   │   ├── components/          # Reusable Components

@@ -34,7 +34,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '40px', color: '#f08e85', background: '#181818', minHeight: '100vh', fontFamily: 'monospace' }}>
-          <h2 style={{ color: '#ffa51d' }}>⚠️ Something went wrong in CodeForge React App</h2>
+          <h2 style={{ color: '#ffa51d' }}>⚠️ Something went wrong in CodeTest React App</h2>
           <pre style={{ background: '#242424', padding: '16px', borderRadius: '8px', color: '#ff8c8c', overflowX: 'auto' }}>
             {this.state.error?.toString()}
           </pre>

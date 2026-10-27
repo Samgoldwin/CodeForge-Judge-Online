@@ -49,7 +49,7 @@ export function HomePage() {
       </section>
 
       <section className="why">
-        <h2>Why CodeForge</h2>
+        <h2>Why CodeTest</h2>
         <div className="why-grid">
           <article>
             <Code2 />

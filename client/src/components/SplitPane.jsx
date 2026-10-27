@@ -6,7 +6,7 @@ export function SplitPaneHorizontal({
   initialRatio = 45,
   minRatio = 25,
   maxRatio = 75,
-  storageKey = 'codeforge_h_ratio',
+  storageKey = 'CodeTest_h_ratio',
   className = ''
 }) {
   const [ratio, setRatio] = useState(() => {
@@ -103,7 +103,7 @@ export function SplitPaneVertical({
   initialRatio = 58,
   minRatio = 25,
   maxRatio = 80,
-  storageKey = 'codeforge_v_ratio',
+  storageKey = 'CodeTest_v_ratio',
   className = ''
 }) {
   const [ratio, setRatio] = useState(() => {

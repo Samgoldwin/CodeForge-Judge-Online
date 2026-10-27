@@ -42,7 +42,7 @@ initDatabase().catch(err => console.warn('[Database] Initial auto-migration noti
 
 app.get('/', (_req, res) => {
   res.status(200).json({
-    name: 'CodeForge Judge Online API',
+    name: 'CodeTest Judge Online API',
     status: 'online',
     clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
     version: '1.0.0',
@@ -811,7 +811,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`CodeForge API running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`CodeTest API running on port ${PORT}`));
 
 
 
