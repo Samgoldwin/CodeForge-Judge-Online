@@ -4,8 +4,8 @@
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install --prefix server
-    startCommand: node server/src/index.js
+    buildCommand: cd server && npm install
+    startCommand: node src/index.js
     envVars:
       - key: NODE_ENV
         value: production
