@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool, initDatabase } from './db.js';
-import { authenticate } from './auth.js';
+import { authenticate, authorizeAdmin } from './auth.js';
 import { runCustomCode, supportedLanguages } from './judge.js';
 import { judgeQueue } from './queue.js';
 
@@ -23,7 +23,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'development_secret', { expiresIn: '2h' });
+const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username, is_admin: Boolean(user.is_admin) }, process.env.JWT_SECRET || 'development_secret', { expiresIn: '2h' });
 const streamTokenFor = (userId, submissionId) => jwt.sign(
   { id: userId, scope: 'submission:stream', submissionId },
   process.env.JWT_SECRET || 'development_secret',
@@ -109,7 +109,7 @@ app.post('/api/auth/register', async (req, res) => {
       'INSERT INTO users (name, username, email, password_hash) VALUES (?, ?, ?, ?)',
       [name, username, email, hash]
     );
-    const user = { id: result.insertId, name, username, email };
+    const user = { id: result.insertId, name, username, email, is_admin: false };
     res.status(201).json({ user, token: tokenFor(user) });
   } catch (e) {
     res.status(e.code === 'ER_DUP_ENTRY' ? 409 : 500).json({
@@ -124,7 +124,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(req.body.password || '', user.password_hash))) {
     return res.status(401).json({ message: 'Incorrect login details.' });
   }
-  res.json({ user: { id: user.id, name: user.name, username: user.username, email: user.email }, token: tokenFor(user) });
+    res.json({ user: { id: user.id, name: user.name, username: user.username, email: user.email, is_admin: Boolean(user.is_admin) }, token: tokenFor(user) });
 });
 
 app.get('/api/problems', async (_req, res) => {
@@ -155,6 +155,117 @@ app.get('/api/problems/:slug', async (req, res) => {
     res.json({ ...rows[0], samples });
   } catch (e) {
     res.status(500).json({ message: 'Failed to load problem.' });
+  }
+});
+
+// Admin: list all problems with test cases
+app.get('/api/admin/problems', authorizeAdmin, async (_req, res) => {
+  try {
+    const [problems] = await pool.query('SELECT * FROM problems ORDER BY id');
+    const result = [];
+    for (const p of problems) {
+      const [tests] = await pool.query('SELECT * FROM test_cases WHERE problem_id = ? ORDER BY id', [p.id]);
+      result.push({ ...p, test_cases: tests });
+    }
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to load admin problems.' });
+  }
+});
+
+// Admin: get a single problem with test cases
+app.get('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const [problems] = await pool.query('SELECT * FROM problems WHERE id = ?', [id]);
+    if (!problems[0]) return res.status(404).json({ message: 'Problem not found.' });
+    const [tests] = await pool.query('SELECT * FROM test_cases WHERE problem_id = ? ORDER BY id', [id]);
+    res.json({ ...problems[0], test_cases: tests });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to load problem.' });
+  }
+});
+
+// Admin: create a problem
+app.post('/api/admin/problems', authorizeAdmin, async (req, res) => {
+  const { slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count, test_cases } = req.body;
+  if (!slug || !title || !difficulty || !tags || !description) {
+    return res.status(400).json({ message: 'slug, title, difficulty, tags and description are required.' });
+  }
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [slug, title, difficulty, tags, description, input_format || '', output_format || '', example_input || '', example_output || '', Number(solved_count || 0)]
+    );
+    const problemId = result.insertId;
+    if (Array.isArray(test_cases)) {
+      for (const tc of test_cases) {
+        await pool.execute(
+          'INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES (?, ?, ?, ?)',
+          [problemId, tc.input_data, tc.expected_output, Boolean(tc.is_sample)]
+        );
+      }
+    }
+    res.status(201).json({ id: problemId, message: 'Problem created.' });
+  } catch (e) {
+    res.status(e.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ message: e.code === 'ER_DUP_ENTRY' ? 'Slug already exists.' : 'Failed to create problem.' });
+  }
+});
+
+// Admin: update a problem
+app.put('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const { slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count } = req.body;
+  try {
+    const [existing] = await pool.query('SELECT id FROM problems WHERE id = ?', [id]);
+    if (!existing[0]) return res.status(404).json({ message: 'Problem not found.' });
+    await pool.execute(
+      'UPDATE problems SET slug = ?, title = ?, difficulty = ?, tags = ?, description = ?, input_format = ?, output_format = ?, example_input = ?, example_output = ?, solved_count = ? WHERE id = ?',
+      [slug, title, difficulty, tags, description, input_format || '', output_format || '', example_input || '', example_output || '', Number(solved_count || 0), id]
+    );
+    res.json({ message: 'Problem updated.' });
+  } catch (e) {
+    res.status(e.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ message: e.code === 'ER_DUP_ENTRY' ? 'Slug already exists.' : 'Failed to update problem.' });
+  }
+});
+
+// Admin: delete a problem
+app.delete('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await pool.execute('DELETE FROM problems WHERE id = ?', [id]);
+    res.json({ message: 'Problem deleted.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to delete problem.' });
+  }
+});
+
+// Admin: add a test case to a problem
+app.post('/api/admin/problems/:id/test-cases', authorizeAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const { input_data, expected_output, is_sample } = req.body;
+  if (!input_data || expected_output === undefined) {
+    return res.status(400).json({ message: 'input_data and expected_output are required.' });
+  }
+  try {
+    await pool.execute(
+      'INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES (?, ?, ?, ?)',
+      [id, input_data, expected_output, Boolean(is_sample)]
+    );
+    res.status(201).json({ message: 'Test case added.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to add test case.' });
+  }
+});
+
+// Admin: delete a test case
+app.delete('/api/admin/test-cases/:id', authorizeAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await pool.execute('DELETE FROM test_cases WHERE id = ?', [id]);
+    res.json({ message: 'Test case deleted.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to delete test case.' });
   }
 });
 

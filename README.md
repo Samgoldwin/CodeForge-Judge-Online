@@ -247,6 +247,7 @@ npm run dev
 2. Set **Root Directory** to `client`.
 3. Configure the build environment variable:
    - `VITE_API_BASE_URL`: `https://your-railway-backend.up.railway.app/api`
+   - The client adds `/api` automatically if the URL is entered without it.
 4. Deploy!
 
 ---

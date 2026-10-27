@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Code2, LogOut } from 'lucide-react';
+import { Code2, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function Navbar() {
@@ -17,6 +17,7 @@ export function Navbar() {
         <Link to="/contests">Contests</Link>
         <Link to="/leaderboard">Leaderboard</Link>
         <Link to="/discuss">Discuss</Link>
+        {user?.is_admin && <Link to="/admin"><ShieldCheck size={16} /> Admin</Link>}
       </nav>
       <div className="account">
         {user ? (

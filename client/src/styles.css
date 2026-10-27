@@ -964,6 +964,21 @@ nav a:hover { color: var(--accent); }
   .contest-points-badge { display: none; }
 }
 
+.input, select, textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  background: #181818;
+  color: var(--text);
+  font: 14px Manrope;
+  outline-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 90px; }
+
+
 
 
 

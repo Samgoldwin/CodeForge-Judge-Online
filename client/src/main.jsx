@@ -13,6 +13,7 @@ import { Leaderboard } from './pages/Leaderboard';
 import { Discuss } from './pages/Discuss';
 import { Profile } from './pages/Profile';
 import { Auth } from './pages/Auth';
+import { Admin } from './pages/Admin';
 
 import './styles.css';
 import './catalog.css';
@@ -79,6 +80,7 @@ function App() {
               <Route path="/contests/:id/standings" element={<ContestStandings />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/discuss" element={<Discuss />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/u/:username" element={<Profile />} />

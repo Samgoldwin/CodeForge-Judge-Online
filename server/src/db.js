@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import PROBLEMS from './problems.seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
@@ -60,12 +61,12 @@ export async function initDatabase() {
     const [probCount] = await pool.query('SELECT COUNT(*) as count FROM problems');
     if (probCount[0].count === 0) {
       console.log('[Database] Seeding default problems...');
+      const values = PROBLEMS.map((p) =>
+        `('${p.slug}', '${p.title.replace(/'/g, "\\'"})', '${p.difficulty}', '${p.tags.replace(/'/g, "\\'"})', '${p.description.replace(/'/g, "\\'"})', '${p.input_format.replace(/'/g, "\\'"})', '${p.output_format.replace(/'/g, "\\'"})', '${p.example_input.replace(/'/g, "\\'"})', '${p.example_output.replace(/'/g, "\\'"})', ${Number(p.solved_count || 0)})`
+      ).join(',\n');
       await pool.query(`
         INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES
-        ('two-sum', 'Two Sum', 'Easy', 'Arrays, Hash Map', 'Given an array of integers and a target, return the indices of two numbers that add up to the target.', 'First line: n and target. Second line: n integers.', 'Print the two zero-based indices.', '4 9\\n2 7 11 15', '0 1', 285),
-        ('valid-parentheses', 'Valid Parentheses', 'Easy', 'Stack, String', 'Given a string containing parentheses, determine if the input string is valid.', 'A single line containing brackets ()[]{}', 'Print true or false', '()[]{}', 'true', 340),
-        ('longest-substring', 'Longest Substring Without Repeating Characters', 'Medium', 'Sliding Window, String', 'Find the length of the longest substring without duplicate characters.', 'A single line string.', 'Print the integer length.', 'abcabcbb', '3', 190),
-        ('merge-intervals', 'Merge Intervals', 'Medium', 'Sorting, Array', 'Given an array of intervals, merge all overlapping intervals.', 'First line contains n. Next n lines contain start and end.', 'Print merged intervals.', '3\\n1 3\\n2 6\\n8 10', '1 6\\n8 10', 145);
+        ${values}
       `);
     }
 
@@ -94,27 +95,24 @@ export async function initDatabase() {
     const [existingTests] = await pool.query('SELECT COUNT(*) as count FROM test_cases');
     if (existingTests[0].count === 0) {
       console.log('[Database] Auto-seeding test cases for default problems...');
-      await pool.query(`
-        INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES
-        (1, '4 9\\n2 7 11 15', '0 1', TRUE),
-        (1, '3 6\\n3 2 4', '1 2', FALSE),
-        (1, '2 6\\n3 3', '0 1', FALSE),
-        (1, '5 100\\n10 20 30 40 60', '3 4', FALSE),
-        (2, '()[]{}', 'true', TRUE),
-        (2, '(]', 'false', FALSE),
-        (2, '([)]', 'false', FALSE),
-        (2, '{[]}', 'true', FALSE),
-        (2, '(((((((((())))))))))', 'true', FALSE),
-        (3, 'abcabcbb', '3', TRUE),
-        (3, 'bbbbb', '1', FALSE),
-        (3, 'pwwkew', '3', FALSE),
-        (3, 'abcdef', '6', FALSE),
-        (3, 'a', '1', FALSE),
-        (4, '3\\n1 3\\n2 6\\n8 10', '1 6\\n8 10', TRUE),
-        (4, '2\\n1 4\\n4 5', '1 5', FALSE),
-        (4, '1\\n1 4', '1 4', FALSE),
-        (4, '4\\n1 3\\n3 5\\n6 7\\n7 8', '1 5\\n6 8', FALSE);
-      `);
+      const [problems] = await pool.query('SELECT id, slug FROM problems');
+      const problemBySlug = new Map(problems.map((p) => [p.slug, p.id]));
+      const tcValues = [];
+      for (const p of PROBLEMS) {
+        const problemId = problemBySlug.get(p.slug);
+        if (!problemId) continue;
+        for (const tc of (p.test_cases || [])) {
+          tcValues.push(
+            `(${problemId}, '${tc.input_data.replace(/'/g, "\\'"})', '${tc.expected_output.replace(/'/g, "\\'"})', ${tc.is_sample ? 'TRUE' : 'FALSE'})`
+          );
+        }
+      }
+      if (tcValues.length) {
+        await pool.query(`
+          INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample) VALUES
+          ${tcValues.join(',\n')}
+        `);
+      }
     }
 
     // 4. Create contests table
@@ -127,6 +125,14 @@ export async function initDatabase() {
         status ENUM('Upcoming','Live','Finished') DEFAULT 'Upcoming'
       )
     `);
+
+    // Keep existing databases compatible with the is_admin column.
+    const [adminColumn] = await pool.query(
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'is_admin'"
+    );
+    if (adminColumn.length === 0) {
+      await pool.query('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
+    }
 
     // Seed default contests if empty
     const [contestCount] = await pool.query('SELECT COUNT(*) as count FROM contests');
@@ -229,8 +235,8 @@ export async function initDatabase() {
     const [existingUsers] = await pool.query('SELECT COUNT(*) as count FROM users');
     if (existingUsers[0].count === 0) {
       await pool.query(`
-        INSERT INTO users (name, username, email, password_hash) VALUES
-        ('CodeTest Admin', 'admin', 'admin@CodeTest.dev', '$2a$10$wO082w1v2gUf7UomJk582OB2B1B6F64gK.aP9mR5O3C/e0fFfJgXW');
+        INSERT INTO users (name, username, email, password_hash, is_admin) VALUES
+        ('CodeTest Admin', 'admin', 'admin@CodeTest.dev', '$2a$10$wO082w1v2gUf7UomJk582OB2B1B6F64gK.aP9mR5O3C/e0fFfJgXW', TRUE);
       `).catch(() => {});
     }
 
