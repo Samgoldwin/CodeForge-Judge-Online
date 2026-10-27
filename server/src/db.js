@@ -57,16 +57,13 @@ export async function initDatabase() {
       )
     `);
 
-    // Seed default problems if empty
-    const [probCount] = await pool.query('SELECT COUNT(*) as count FROM problems');
-    if (probCount[0].count === 0) {
-      console.log('[Database] Seeding default problems...');
-      for (const p of PROBLEMS) {
-        await pool.execute(
-          'INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [p.slug, p.title, p.difficulty, p.tags, p.description, p.input_format || '', p.output_format || '', p.example_input || '', p.example_output || '', Number(p.solved_count || 0)]
-        );
-      }
+    // Seed default problems (upsert by slug so existing DBs get new problems too)
+    console.log('[Database] Seeding default problems...');
+    for (const p of PROBLEMS) {
+      await pool.execute(
+        'INSERT INTO problems (slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title), difficulty = VALUES(difficulty), tags = VALUES(tags), description = VALUES(description), input_format = VALUES(input_format), output_format = VALUES(output_format), example_input = VALUES(example_input), example_output = VALUES(example_output), solved_count = VALUES(solved_count)',
+        [p.slug, p.title, p.difficulty, p.tags, p.description, p.input_format || '', p.output_format || '', p.example_input || '', p.example_output || '', Number(p.solved_count || 0)]
+      );
     }
 
     // 3. Create test_cases table
@@ -90,12 +87,18 @@ export async function initDatabase() {
       await pool.query('ALTER TABLE test_cases ADD COLUMN is_sample BOOLEAN DEFAULT FALSE');
     }
 
-    // Seed test cases if empty
-    const [existingTests] = await pool.query('SELECT COUNT(*) as count FROM test_cases');
-    if (existingTests[0].count === 0) {
-      console.log('[Database] Auto-seeding test cases for default problems...');
-      const [problems] = await pool.query('SELECT id, slug FROM problems');
-      const problemBySlug = new Map(problems.map((p) => [p.slug, p.id]));
+    // Ensure test cases are in sync for seeded problems
+    const [problems] = await pool.query('SELECT id, slug FROM problems');
+    const problemBySlug = new Map(problems.map((p) => [p.slug, p.id]));
+    const seededProblemIds = [];
+    for (const p of PROBLEMS) {
+      const problemId = problemBySlug.get(p.slug);
+      if (!problemId) continue;
+      seededProblemIds.push(problemId);
+    }
+    if (seededProblemIds.length) {
+      const placeholders = seededProblemIds.map(() => '?').join(',');
+      await pool.execute(`DELETE FROM test_cases WHERE problem_id IN (${placeholders})`, seededProblemIds);
       for (const p of PROBLEMS) {
         const problemId = problemBySlug.get(p.slug);
         if (!problemId) continue;
