@@ -17,9 +17,27 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 
-const clientOrigin = process.env.CLIENT_URL;
+const clientOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((s) => s.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+const allowedOrigins = new Set([
+  ...clientOrigins,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
+]);
 app.use(cors({
-  origin: clientOrigin ? [clientOrigin, 'http://localhost:5173'] : true,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (!clientOrigins.length) return cb(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    if (allowedOrigins.has(normalized)) return cb(null, true);
+    return cb(null, false);
+  },
   credentials: true
 }));
 app.use(express.json());
