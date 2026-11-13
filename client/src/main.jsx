@@ -15,6 +15,7 @@ import { Profile } from './pages/Profile';
 import { PerformanceDashboard } from './pages/PerformanceDashboard';
 import { Auth } from './pages/Auth';
 import { Admin } from './pages/Admin';
+import './registerSW';
 
 import './styles.css';
 import './catalog.css';
