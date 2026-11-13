@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import { TrendingUp, TrendingDown, Target, Clock, Brain, Award, BarChart2, PieChart, Activity, Zap, CheckCircle2, AlertCircle, Loader2, ChevronRight, Calendar, Filter } from 'lucide-react';
@@ -567,7 +568,10 @@ export function PerformanceDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     fetchDashboardData();
   }, [user, timeRange]);
 
@@ -639,12 +643,28 @@ export function PerformanceDashboard() {
         }
       });
     } catch (err) {
-      setError('Failed to load dashboard data');
+      if (err?.response?.status === 401) {
+        setError('Session expired. Please log in again.');
+      } else {
+        setError('Failed to load dashboard data');
+      }
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <section className="content page">
+        <div className="error-state">
+          <AlertCircle size={48} style={{ color: '#ffa51d' }} />
+          <h3>Log in to view your analytics</h3>
+          <Link to="/login" className="button">Log in</Link>
+        </div>
+      </section>
+    );
+  }
 
   if (loading) {
     return (
