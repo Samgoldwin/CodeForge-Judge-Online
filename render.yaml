@@ -17,4 +17,14 @@
         sync: false
       - key: JUDGE_CONCURRENCY
         value: "2"
+      - key: JUDGE_MODE
+        value: judge0
+      - key: KEEP_ALIVE_URL
+        sync: false
+      - key: UNOROUTER_API_KEY
+        sync: false
+      - key: UNOROUTER_BASE_URL
+        value: https://api.unorouter.com/v1
+      - key: UNOROUTER_MODEL
+        value: claude-sonnet-5-5
     healthCheckPath: /health

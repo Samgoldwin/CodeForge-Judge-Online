@@ -7,6 +7,8 @@ client/dist/
 # Local secrets - keep only .env.example in GitHub
 .env
 server/.env
+client/.env.development
+client/.env.local
 
 # Local editor and temporary files
 .vscode/
@@ -15,4 +17,21 @@ outputs/
 *.log
 Thumbs.db
 desktop.ini
+
+# Local captures, debug scripts, and archives (not needed in deploy)
+screenshots/
+all_figures/
+all_figures.zip
+capture-all.mjs
+capture-screenshots.mjs
+debugjudge.mjs
+diag-workspace.mjs
+diagnose.mjs
+getsub.mjs
+inspect.cjs
+seed-contest.cjs
+testauth.mjs
+testjudge.mjs
+testq.cjs
+testrun.mjs
 

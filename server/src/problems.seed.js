@@ -17,7 +17,7 @@ export const PROBLEMS = [
       { input_data: '3 6\n3 2 4', expected_output: '1 2', is_sample: false },
       { input_data: '2 6\n3 3', expected_output: '0 1', is_sample: false },
       { input_data: '5 100\n10 20 30 40 60', expected_output: '3 4', is_sample: false },
-      { input_data: '6 -1\n-1 -2 -3 -4 -5 5', expected_output: '0 5', is_sample: false },
+      { input_data: '6 4\n-1 -2 -3 -4 -5 5', expected_output: '0 5', is_sample: false },
     ],
   },
   {

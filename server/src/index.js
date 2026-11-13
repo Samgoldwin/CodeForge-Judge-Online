@@ -9,6 +9,7 @@ import { pool, initDatabase } from './db.js';
 import { authenticate, authorizeAdmin } from './auth.js';
 import { runCustomCode, supportedLanguages } from './judge.js';
 import { judgeQueue } from './queue.js';
+import { generateAIReview } from './aiReview.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
@@ -119,7 +120,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const [rows] = await pool.execute('SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1', [req.body.login || '', req.body.login || '']);
+  const [rows] = await pool.execute('SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR username = ? LIMIT 1', [req.body.login || '', req.body.login || '']);
   const user = rows[0];
   if (!user || !(await bcrypt.compare(req.body.password || '', user.password_hash))) {
     return res.status(401).json({ message: 'Incorrect login details.' });
@@ -159,7 +160,7 @@ app.get('/api/problems/:slug', async (req, res) => {
 });
 
 // Admin: list all problems with test cases
-app.get('/api/admin/problems', authorizeAdmin, async (_req, res) => {
+app.get('/api/admin/problems', authenticate, authorizeAdmin, async (_req, res) => {
   try {
     const [problems] = await pool.query('SELECT * FROM problems ORDER BY id');
     const result = [];
@@ -174,7 +175,7 @@ app.get('/api/admin/problems', authorizeAdmin, async (_req, res) => {
 });
 
 // Admin: get a single problem with test cases
-app.get('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+app.get('/api/admin/problems/:id', authenticate, authorizeAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
     const [problems] = await pool.query('SELECT * FROM problems WHERE id = ?', [id]);
@@ -187,7 +188,7 @@ app.get('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
 });
 
 // Admin: create a problem
-app.post('/api/admin/problems', authorizeAdmin, async (req, res) => {
+app.post('/api/admin/problems', authenticate, authorizeAdmin, async (req, res) => {
   const { slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count, test_cases } = req.body;
   if (!slug || !title || !difficulty || !tags || !description) {
     return res.status(400).json({ message: 'slug, title, difficulty, tags and description are required.' });
@@ -213,7 +214,7 @@ app.post('/api/admin/problems', authorizeAdmin, async (req, res) => {
 });
 
 // Admin: update a problem
-app.put('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+app.put('/api/admin/problems/:id', authenticate, authorizeAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const { slug, title, difficulty, tags, description, input_format, output_format, example_input, example_output, solved_count } = req.body;
   try {
@@ -230,7 +231,7 @@ app.put('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
 });
 
 // Admin: delete a problem
-app.delete('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
+app.delete('/api/admin/problems/:id', authenticate, authorizeAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
     await pool.execute('DELETE FROM problems WHERE id = ?', [id]);
@@ -241,7 +242,7 @@ app.delete('/api/admin/problems/:id', authorizeAdmin, async (req, res) => {
 });
 
 // Admin: add a test case to a problem
-app.post('/api/admin/problems/:id/test-cases', authorizeAdmin, async (req, res) => {
+app.post('/api/admin/problems/:id/test-cases', authenticate, authorizeAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const { input_data, expected_output, is_sample } = req.body;
   if (!input_data || expected_output === undefined) {
@@ -259,7 +260,7 @@ app.post('/api/admin/problems/:id/test-cases', authorizeAdmin, async (req, res) 
 });
 
 // Admin: delete a test case
-app.delete('/api/admin/test-cases/:id', authorizeAdmin, async (req, res) => {
+app.delete('/api/admin/test-cases/:id', authenticate, authorizeAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
     await pool.execute('DELETE FROM test_cases WHERE id = ?', [id]);
@@ -330,7 +331,7 @@ app.post('/api/submissions', authenticate, async (req, res) => {
     let submissionId;
     try {
       const [result] = await pool.execute(
-        'INSERT INTO submissions (user_id, problem_id, contest_id, language, source_code, status, verdict, total_test_cases) VALUES (?, ?, ?, ?, ?, "queued", "Queued", ?)',
+        "INSERT INTO submissions (user_id, problem_id, contest_id, language, source_code, status, verdict, total_test_cases) VALUES (?, ?, ?, ?, ?, 'queued', 'Queued', ?)",
         [req.user.id, problemId, cid, language, sourceCode, tests.length]
       );
       submissionId = result.insertId;
@@ -338,7 +339,7 @@ app.post('/api/submissions', authenticate, async (req, res) => {
       if (cid !== null) throw insertErr;
       // Fallback for legacy submissions table
       const [result] = await pool.execute(
-        'INSERT INTO submissions (user_id, problem_id, language, source_code, verdict) VALUES (?, ?, ?, ?, "Queued")',
+        "INSERT INTO submissions (user_id, problem_id, language, source_code, verdict) VALUES (?, ?, ?, ?, 'Queued')",
         [req.user.id, problemId, language, sourceCode]
       );
       submissionId = result.insertId;
@@ -428,7 +429,8 @@ app.get('/api/submissions/:id/stream', async (req, res) => {
 app.get('/api/submissions/me', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.memory_mb,
+      `SELECT s.id, s.problem_id, p.title AS problem_title, p.difficulty, p.tags,
+              s.language, s.verdict, s.runtime_ms, s.memory_mb,
               s.passed_test_cases, s.total_test_cases, s.created_at
        FROM submissions s JOIN problems p ON p.id = s.problem_id
        WHERE s.user_id = ? ORDER BY s.created_at DESC`,
@@ -483,6 +485,54 @@ app.post('/api/judge/run', authenticate, async (req, res) => {
     res.status(error.code === 'JUDGE_UNAVAILABLE' ? 503 : 500).json({
       message: error.message || 'Run execution failed.'
     });
+  }
+});
+
+// AI Code Review Endpoint
+app.post('/api/ai/review', authenticate, async (req, res) => {
+  const { language, sourceCode, problemSlug, verdict, testResults } = req.body;
+  if (!language || typeof sourceCode !== 'string' || !sourceCode) {
+    return res.status(400).json({ message: 'Language and source code are required.' });
+  }
+  if (!supportedLanguages.includes(language)) {
+    return res.status(400).json({ message: `Choose one of: ${supportedLanguages.join(', ')}.` });
+  }
+
+  try {
+    const review = await generateAIReview({
+      language,
+      sourceCode,
+      problemSlug,
+      verdict,
+      testResults,
+      userId: req.user.id
+    });
+    res.json(review);
+  } catch (error) {
+    console.error('AI Review error:', error);
+    res.status(500).json({ message: 'AI review generation failed.' });
+  }
+});
+
+// Analytics Dashboard Endpoint
+app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
+  const { range = '30d' } = req.query;
+  try {
+    const days = range === '7d' ? 7 : range === '30d' ? 30 : range === '90d' ? 90 : range === '1y' ? 365 : 36500;
+    const [subs] = await pool.execute(
+      `SELECT s.id, s.problem_id, s.language, s.verdict, s.runtime_ms, s.memory_mb, s.created_at,
+              p.title AS problem_title, p.difficulty, p.tags
+       FROM submissions s
+       JOIN problems p ON p.id = s.problem_id
+       WHERE s.user_id = ? AND s.created_at >= DATE_SUB(NOW(), INTERVAL ${days} DAY)
+       ORDER BY s.created_at DESC`,
+      [req.user.id]
+    );
+
+    res.json({ submissions: subs, range });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ message: 'Failed to load analytics.' });
   }
 });
 
@@ -698,7 +748,7 @@ app.get('/api/contests/:id/standings', async (req, res) => {
 app.get('/api/leaderboard', async (_req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT u.username, u.name, COUNT(DISTINCT CASE WHEN s.verdict="Accepted" THEN s.problem_id END) solved, COALESCE(SUM(CASE WHEN s.verdict="Accepted" THEN 100 ELSE 0 END),0) score FROM users u LEFT JOIN submissions s ON u.id=s.user_id GROUP BY u.id ORDER BY score DESC, solved DESC LIMIT 10'
+      "SELECT u.username, u.name, COUNT(DISTINCT CASE WHEN s.verdict='Accepted' THEN s.problem_id END) solved, COALESCE(SUM(CASE WHEN s.verdict='Accepted' THEN 100 ELSE 0 END),0) score FROM users u LEFT JOIN submissions s ON u.id=s.user_id GROUP BY u.id ORDER BY score DESC, solved DESC LIMIT 10"
     );
     res.json(rows);
   } catch (e) {
@@ -742,7 +792,7 @@ async function fetchUserProfile(userId, res) {
 
   // Submission summary stats
   const [subStats] = await pool.execute(
-    'SELECT COUNT(*) as total_submissions, COUNT(CASE WHEN verdict = "Accepted" THEN 1 END) as total_accepted FROM submissions WHERE user_id = ?',
+    "SELECT COUNT(*) as total_submissions, COUNT(CASE WHEN verdict = 'Accepted' THEN 1 END) as total_accepted FROM submissions WHERE user_id = ?",
     [user.id]
   );
   const totalSubmissions = Number(subStats[0]?.total_submissions || 0);
@@ -921,8 +971,29 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[Process] Unhandled rejection at:', promise, 'reason:', reason);
 });
 
+function startKeepAlive() {
+  const base = (process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+  if (!base) return;
+  const url = `${base}/health`;
+  const intervalMs = Math.max(60_000, Number(process.env.KEEP_ALIVE_INTERVAL_MS || 14 * 60 * 1000));
+  const ping = async () => {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      console.log(`[KeepAlive] ping ${res.status} ${url}`);
+    } catch (err) {
+      console.warn('[KeepAlive] ping failed:', err.message);
+    }
+  };
+  setTimeout(ping, 30_000);
+  setInterval(ping, intervalMs);
+  console.log(`[KeepAlive] enabled -> ${url} every ${Math.round(intervalMs / 60000)}m`);
+}
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`CodeTest API running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`CodeTest API running on port ${PORT}`);
+  startKeepAlive();
+});
 
 
 

@@ -5,6 +5,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { CodeEditor, STARTER_TEMPLATES } from '../components/CodeEditor';
 import { TestcasePanel } from '../components/TestcasePanel';
+import { AIReviewPanel } from '../components/AIReview';
 import { SplitPaneHorizontal, SplitPaneVertical } from '../components/SplitPane';
 
 const difficultyClass = (d) => (d ? d.toLowerCase() : 'easy');
@@ -37,6 +38,10 @@ export function ProblemWorkspace() {
     percent: 0,
     customResult: null
   });
+
+  // AI Review State
+  const [aiReview, setAiReview] = useState(null);
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
 
   const eventSourceRef = useRef(null);
 
@@ -82,6 +87,27 @@ export function ProblemWorkspace() {
     } else {
       setCopiedOutput(true);
       setTimeout(() => setCopiedOutput(false), 2000);
+    }
+  };
+
+  // AI Code Review Analysis
+  const runAiReview = async (verdict, testResults) => {
+    if (!user) return;
+    setIsAiAnalyzing(true);
+    setAiReview(null);
+    try {
+      const { data } = await api.post('/ai/review', {
+        language,
+        sourceCode: code,
+        problemSlug: slug,
+        verdict,
+        testResults
+      });
+      setAiReview(data);
+    } catch (e) {
+      console.error('AI Review failed:', e);
+    } finally {
+      setIsAiAnalyzing(false);
     }
   };
 
@@ -142,6 +168,8 @@ export function ProblemWorkspace() {
         customResult: data,
         detail: data.stderr || ''
       });
+      // Trigger AI review after run completion
+      runAiReview(verdictText, null);
     } catch (e) {
       setJudgeState({
         status: 'failed',
@@ -222,6 +250,8 @@ export function ProblemWorkspace() {
           detail: result.detail,
           percent: 100
         });
+        // Trigger AI review after submission completion
+        runAiReview(result.verdict, result.testResults);
         es.close();
         loadHistory();
       });
@@ -235,6 +265,8 @@ export function ProblemWorkspace() {
           detail: failure.error,
           percent: 100
         });
+        // Trigger AI review even on failure
+        runAiReview(failure.verdict || 'Failed', failure.testResults);
         es.close();
       });
 
@@ -253,6 +285,8 @@ export function ProblemWorkspace() {
               detail: res.data.error_detail,
               percent: 100
             });
+            // Trigger AI review on fallback completion
+            runAiReview(res.data.verdict, res.data.testResults);
             loadHistory();
           }
         }).catch(() => {});
@@ -390,7 +424,21 @@ export function ProblemWorkspace() {
               maxRatio={80}
               storageKey="CodeTest_workspace_vratio"
               top={topEditorPane}
-              bottom={bottomTestPane}
+              bottom={
+                <div className="bottom-pane-with-ai">
+                  {bottomTestPane}
+                  <AIReviewPanel
+                    language={language}
+                    code={code}
+                    problemSlug={slug}
+                    verdict={judgeState.verdict}
+                    testResults={judgeState.testResults}
+                    onAnalyze={() => runAiReview(judgeState.verdict, judgeState.testResults)}
+                    isAnalyzing={isAiAnalyzing}
+                    review={aiReview}
+                  />
+                </div>
+              }
             />
           </div>
         }

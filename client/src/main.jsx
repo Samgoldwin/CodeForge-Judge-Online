@@ -12,6 +12,7 @@ import { ContestStandings } from './pages/ContestStandings';
 import { Leaderboard } from './pages/Leaderboard';
 import { Discuss } from './pages/Discuss';
 import { Profile } from './pages/Profile';
+import { PerformanceDashboard } from './pages/PerformanceDashboard';
 import { Auth } from './pages/Auth';
 import { Admin } from './pages/Admin';
 
@@ -84,6 +85,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/u/:username" element={<Profile />} />
+              <Route path="/performance" element={<PerformanceDashboard />} />
               <Route path="/login" element={<Auth register={false} />} />
               <Route path="/register" element={<Auth register={true} />} />
               <Route path="*" element={<Navigate to="/" replace />} />

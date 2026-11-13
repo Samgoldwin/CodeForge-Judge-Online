@@ -19,7 +19,8 @@ export const pool = mysql.createPool(
     waitForConnections: true,
     connectionLimit: 10,
     connectTimeout: 15000,
-    enableKeepAlive: true
+    enableKeepAlive: true,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
   }
 );
 

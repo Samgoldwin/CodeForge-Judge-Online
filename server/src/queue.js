@@ -107,10 +107,10 @@ export class JudgeQueue extends EventEmitter {
     try {
       // Mark processing in DB and memory
       await pool.execute(
-        'UPDATE submissions SET status = "processing", verdict = "Processing" WHERE id = ?',
+        "UPDATE submissions SET status = 'processing', verdict = 'Processing' WHERE id = ?",
         [id]
       ).catch(() => {
-        pool.execute('UPDATE submissions SET verdict = "Processing" WHERE id = ?', [id]).catch(() => {});
+        pool.execute("UPDATE submissions SET verdict = 'Processing' WHERE id = ?", [id]).catch(() => {});
       });
 
       const processingState = {
@@ -140,7 +140,7 @@ export class JudgeQueue extends EventEmitter {
       // Update database with final verdict and memory
       try {
         await pool.execute(
-          'UPDATE submissions SET status = "completed", verdict = ?, runtime_ms = ?, memory_mb = ?, passed_test_cases = ?, total_test_cases = ?, error_detail = ? WHERE id = ?',
+          "UPDATE submissions SET status = 'completed', verdict = ?, runtime_ms = ?, memory_mb = ?, passed_test_cases = ?, total_test_cases = ?, error_detail = ? WHERE id = ?",
           [
             result.verdict,
             result.runtimeMs || 0,
@@ -161,7 +161,7 @@ export class JudgeQueue extends EventEmitter {
       // If accepted, update solved count if not already solved by user
       if (result.verdict === 'Accepted') {
         const [prev] = await pool.execute(
-          'SELECT id FROM submissions WHERE user_id = ? AND problem_id = ? AND verdict = "Accepted" AND id != ? LIMIT 1',
+          "SELECT id FROM submissions WHERE user_id = ? AND problem_id = ? AND verdict = 'Accepted' AND id != ? LIMIT 1",
           [userId, problemId, id]
         );
         if (prev.length === 0) {
