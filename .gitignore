@@ -35,3 +35,12 @@ testjudge.mjs
 testq.cjs
 testrun.mjs
 
+
+# APK/app build artifacts
+out/
+.apk-build/
+*.apk
+*.aab
+*.keystore
+*.jks
+tools/apk-generator/.apk-build/

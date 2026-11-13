@@ -9,7 +9,7 @@ export function Navbar() {
   return (
     <header>
       <Link className="brand" to="/">
-        <span><Code2 size={23} /></span>Code<span className="brand-accent">Forge</span>
+        <span><Code2 size={23} /></span>Code <span className="brand-accent">Test</span>
       </Link>
       <nav>
         <Link to="/">Home</Link>
